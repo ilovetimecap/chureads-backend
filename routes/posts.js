@@ -53,14 +53,14 @@ postRouter.post("/", async (req, res) => {
     const post = req.body;
 
     // GPT AI로 태그 생성
-    // const tags = await generateTags(post.content);
-    // console.log("🚀 ~ tags:", tags);
+    const tags = await generateTags(post.content);
+    console.log("🚀 ~ tags:", tags);
 
     const newItem = {
       ...post,
       likeCount: 0,
       likedUsers: [], //좋아요 한 UserID목록
-      tags: [],
+      tags,
       createdAt: new Date(),
     };
 
