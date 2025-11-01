@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { broadcastToClients } from "../sse/sseManager.js";
+import { generateTags } from "../services/tagService.js";
 
 // 게시물 관련 모든 API 엔드포인트를 관리하는 라우터
 import express from "express";
@@ -50,12 +51,18 @@ postRouter.post("/", async (req, res) => {
   // 요청 body에서 게시물 데이터를 받아서 데이터베이스에 저장
   try {
     const post = req.body;
+
+    // GPT AI로 태그 생성
+    const tags = await generateTags(post.content);
+
     const newItem = {
       ...post,
       likeCount: 0,
       likedUsers: [], //좋아요 한 UserID목록
+      tags,
       createdAt: new Date(),
     };
+
     const result = await collection.insertOne(newItem);
 
     // 🔔🔔새 게시물 알림을 모든 클라이언트에게 전송
@@ -63,8 +70,8 @@ postRouter.post("/", async (req, res) => {
       postId: result.insertedId,
       userName: newItem.userName,
       content:
-        newItem.content.substring(0, 50) +
-        (newItem.content.length > 50 ? "..." : ""),
+        newItem.content.substring(0, 20) +
+        (newItem.content.length > 20 ? "..." : ""),
       createdAt: newItem.createdAt,
       message: `${newItem.userName}님이 새 글을 작성했습니다.`,
     });
@@ -83,7 +90,7 @@ postRouter.put("/:id", async (req, res) => {
     const post = req.body;
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      { $set: { content: post.content, updatedAt: new Date() } } // 지정된 필드만 업데이터
+      { $set: { content: post.content, updatedAt: new Date() } } // 지정된 필드만 업데이트
     );
     res.status(200).json(result);
   } catch (error) {
@@ -129,9 +136,13 @@ postRouter.put("/:id/like", async (req, res) => {
           $pull: { likedUsers: userId }, // 배열에서 조건에 맞는 요소를 제거
         }
       );
-      res
-        .status(200)
-        .json({ ...result, action: "unliked", likeCount: post.likeCount - 1 });
+      const resData = {
+        ...result,
+        action: "unliked",
+        likeCount: post.likeCount - 1,
+      };
+      console.log("🚀 ~ postRouter.put ~ resData:", resData);
+      res.status(200).json(resData);
     } else {
       // 좋아요 추가
       const result = await collection.updateOne(
@@ -142,9 +153,12 @@ postRouter.put("/:id/like", async (req, res) => {
           $addToSet: { likedUsers: userId }, // 배열에 중복되지 않는 요소만 추가 (중복 방지하며 추가)
         }
       );
-      res
-        .status(200)
-        .json({ ...result, action: "liked", likeCount: post.likeCount + 1 });
+      const resData = {
+        ...result,
+        action: "liked",
+        likeCount: post.likeCount + 1,
+      };
+      res.status(200).json(resData);
     }
   } catch (error) {
     console.log(error);
