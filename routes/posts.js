@@ -8,6 +8,7 @@ const postRouter = express.Router();
 postRouter.get("/", async (req, res) => {
   try {
     // TODO:모든 게시물 조회
+    res.status(200).json({ message: "Success" });
   } catch (error) {
     console.log(error);
   }
@@ -50,3 +51,5 @@ postRouter.delete("/:id", async (req, res) => {
     console.log(error);
   }
 });
+
+export default postRouter;
